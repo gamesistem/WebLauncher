@@ -90,10 +90,26 @@
         .btn:active {
             transform: scale(0.96);
         }
+        
+        /* Estilos das Seções/Blocos Separados */
+        .section-title {
+            font-size: 1.3rem;
+            color: #cbb7e6;
+            margin: 2rem 0 0.8rem 0;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .section-title:first-of-type {
+            margin-top: 1rem;
+        }
+
         .table-wrapper {
             overflow-x: auto;
             border-radius: 16px;
             background: #1a1525;
+            margin-bottom: 1rem;
         }
         table {
             width: 100%;
@@ -141,6 +157,10 @@
             background: #b8863a;
             color: #ffecb3;
         }
+        .status-extra {
+            background: #2b4a7e;
+            color: #d2e4ff;
+        }
         .status-empty {
             background: #4a3a55;
             color: #c0b0cc;
@@ -156,6 +176,14 @@
             padding: 1rem;
             border-radius: 12px;
             margin: 1rem 0;
+        }
+        .empty-notice {
+            padding: 2rem;
+            text-align: center;
+            color: #7a6a8a;
+            background: #1a1525;
+            border-radius: 16px;
+            font-style: italic;
         }
         .footer {
             margin-top: 2rem;
@@ -195,22 +223,23 @@
         <button class="btn" id="refreshBtn">⟳ Atualizar agora</button>
     </div>
 
-    <div id="tableContainer">
+    <div id="contentContainer">
         <div class="loading">⏳ Buscando dados do repositório…</div>
     </div>
 
     <div class="footer">
-        Dados obtidos de <a href="https://raw.githubusercontent.com/gamesistem/WebLauncher/main/t%C3%A1vola%20redonda.txt" target="_blank">gamesistem/WebLauncher/távola redonda.txt</a>
+        Dados obtidos do repositório <a href="https://github.com/gamesistem/WebLauncher" target="_blank">gamesistem/WebLauncher</a>
         &bull; Atualização automática a cada 10s
     </div>
 </div>
 
 <script>
     (function() {
-        // URL raw do arquivo no GitHub
-        const RAW_URL = 'https://raw.githubusercontent.com/gamesistem/WebLauncher/main/t%C3%A1vola%20redonda.txt';
+        // URLs raw dos arquivos no GitHub
+        const PRINCIPAL_URL = 'https://raw.githubusercontent.com/gamesistem/WebLauncher/main/t%C3%A1vola%20redonda.txt';
+        const EXTRA_URL = 'https://raw.githubusercontent.com/gamesistem/WebLauncher/main/extra.txt';
 
-        const tableContainer = document.getElementById('tableContainer');
+        const contentContainer = document.getElementById('contentContainer');
         const lastUpdateSpan = document.getElementById('lastUpdate');
         const countSpan = document.getElementById('count');
         const refreshBtn = document.getElementById('refreshBtn');
@@ -218,71 +247,69 @@
         let autoUpdateInterval = null;
         const UPDATE_INTERVAL_MS = 10000; // 10 segundos
 
-        // --- Função principal de parse e renderização ---
+        // --- Função principal que busca e divide em blocos separados ---
         function fetchAndRender() {
-            // Adiciona um "cache buster" (?t=timestamp) para ignorar o cache do GitHub e pegar as novas linhas na hora
-            const urlComCacheBuster = `${RAW_URL}?t=${new Date().getTime()}`;
+            const timestamp = new Date().getTime();
+            const urlPrincipal = `${PRINCIPAL_URL}?t=${timestamp}`;
+            const urlExtra = `${EXTRA_URL}?t=${timestamp}`;
 
-            fetch(urlComCacheBuster)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status} – ${response.statusText}`);
-                    }
-                    return response.text();
-                })
-                .then(text => {
-                    const cavaleiros = parseText(text);
-                    renderTable(cavaleiros);
-                    updateStatus(cavaleiros.length);
-                })
-                .catch(error => {
-                    tableContainer.innerHTML = `
-                        <div class="error">
-                            ❌ Erro ao buscar o arquivo: ${error.message}<br>
-                            <small>Verifique a URL ou sua conexão com a internet.</small>
-                        </div>
-                    `;
-                    updateStatus(0, true);
-                });
+            // Busca os dois arquivos simultaneamente
+            Promise.all([
+                fetch(urlPrincipal).then(res => res.ok ? res.text() : ""),
+                fetch(urlExtra).then(res => res.ok ? res.text() : "")
+            ])
+            .then(([txtPrincipal, txtExtra]) => {
+                const principais = parseText(txtPrincipal, false);
+                const extras = parseText(txtExtra, true);
+                
+                renderSplitTables(principais, extras);
+                updateStatus(principais.length + extras.length);
+            })
+            .catch(error => {
+                contentContainer.innerHTML = `
+                    <div class="error">
+                        ❌ Erro ao carregar as tabelas: ${error.message}<br>
+                        <small>Verifique os arquivos no repositório ou sua conexão.</small>
+                    </div>
+                `;
+                updateStatus(0, true);
+            });
         }
 
-        // --- Parser: extrai [cavaleiro](nome real) de cada linha ---
-        function parseText(rawText) {
+        // --- Parser igual ao anterior ---
+        function parseText(rawText, isExtraFile) {
+            if (!rawText) return [];
             const lines = rawText.split(/\r?\n/);
             const result = [];
 
             for (let line of lines) {
                 line = line.trim();
-                if (!line) continue; // ignora linhas vazias
+                if (!line) continue;
 
-                // REGEX AJUSTADA: Aceita espaços extras que possam surgir ao digitar novas linhas no txt
                 const match = line.match(/^\s*\[([^\]]*)\]\s*\(([^)]*)\)\s*$/);
                 if (match) {
                     const cavaleiro = match[1].trim();
                     let nomeReal = match[2].trim();
-
-                    let status = 'assigned'; // padrão
-                    if (nomeReal === '') {
+                    let status = 'assigned';
+                    
+                    if (isExtraFile) {
+                        status = 'extra';
+                    } else if (nomeReal === '') {
                         status = 'empty';
                     } else if (nomeReal === '???') {
                         status = 'pending';
                     }
+                    
                     result.push({ cavaleiro, nomeReal, status });
                 }
             }
-
             return result;
         }
 
-        // --- Renderiza a tabela ---
-        function renderTable(cavaleiros) {
-            if (!cavaleiros || cavaleiros.length === 0) {
-                tableContainer.innerHTML = `
-                    <div style="padding: 2rem; text-align: center; color: #b8a9c9;">
-                        Nenhum cavaleiro encontrado no arquivo.
-                    </div>
-                `;
-                return;
+        // --- Cria a estrutura HTML de uma tabela específica ---
+        function generateTableHtml(lista) {
+            if (lista.length === 0) {
+                return `<div class="empty-notice">Nenhum cavaleiro registrado neste bloco.</div>`;
             }
 
             let html = `
@@ -298,7 +325,7 @@
                         <tbody>
             `;
 
-            for (let item of cavaleiros) {
+            for (let item of lista) {
                 let statusText = '';
                 let statusClass = '';
                 let nomeExibido = item.nomeReal;
@@ -309,18 +336,20 @@
                         statusClass = 'status-assigned';
                         break;
                     case 'pending':
-                        statusText = 'Designado (não está com o resto)';
+                        statusText = 'Pendente';
                         statusClass = 'status-pending';
                         nomeExibido = '???';
+                        break;
+                    case 'extra':
+                        statusText = 'Lista de Espera / Apoio';
+                        statusClass = 'status-extra';
+                        if (nomeExibido === '' || nomeExibido === '???') nomeExibido = '—';
                         break;
                     case 'empty':
                         statusText = 'Não designado';
                         statusClass = 'status-empty';
                         nomeExibido = '—';
                         break;
-                    default:
-                        statusText = 'Desconhecido';
-                        statusClass = 'status-empty';
                 }
 
                 html += `
@@ -332,13 +361,23 @@
                 `;
             }
 
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
+            html += `</tbody></table></div>`;
+            return html;
+        }
 
-            tableContainer.innerHTML = html;
+        // --- Renderiza as tabelas divididas por blocos visuais ---
+        function renderSplitTables(principais, extras) {
+            let finalHtml = '';
+
+            // Bloco 1: Principais
+            finalHtml += `<div class="section-title">⚔️ Cavaleiros Principais</div>`;
+            finalHtml += generateTableHtml(principais);
+
+            // Bloco 2: Lista de Espera / Extras
+            finalHtml += `<div class="section-title">📜 Lista de Espera & Contribuintes</div>`;
+            finalHtml += generateTableHtml(extras);
+
+            contentContainer.innerHTML = finalHtml;
         }
 
         // --- Atualiza as informações de status ---
@@ -347,13 +386,12 @@
             const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             lastUpdateSpan.textContent = `🕒 ${timeStr}`;
             if (!isError) {
-                countSpan.textContent = `${count} cavaleiro${count !== 1 ? 's' : ''}`;
+                countSpan.textContent = `${count} cavaleiro${count !== 1 ? 's' : ''} no total`;
             } else {
                 countSpan.textContent = '⚠️ erro';
             }
         }
 
-        // --- pequeno helper para escape HTML (evitar XSS) ---
         function escapeHtml(str) {
             if (!str) return '';
             return str.replace(/&/g, '&amp;')
@@ -363,26 +401,17 @@
                       .replace(/'/g, '&#039;');
         }
 
-        // --- Inicia o auto-update e trata do botão ---
         function startAutoUpdate() {
             fetchAndRender();
-
-            if (autoUpdateInterval) {
-                clearInterval(autoUpdateInterval);
-            }
+            if (autoUpdateInterval) clearInterval(autoUpdateInterval);
             autoUpdateInterval = setInterval(fetchAndRender, UPDATE_INTERVAL_MS);
         }
 
-        refreshBtn.addEventListener('click', () => {
-            fetchAndRender();
-        });
-
+        refreshBtn.addEventListener('click', fetchAndRender);
         startAutoUpdate();
 
         window.addEventListener('beforeunload', () => {
-            if (autoUpdateInterval) {
-                clearInterval(autoUpdateInterval);
-            }
+            if (autoUpdateInterval) clearInterval(autoUpdateInterval);
         });
     })();
 </script>
