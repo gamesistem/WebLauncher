@@ -12,5 +12,5 @@
 [Lamorak]()
 [Tristan]("Hestis")
 [Percival]("Venom")
-[Agravain](Gareth)
+[Agravain]("Gareth")
 [Dagonet]()
