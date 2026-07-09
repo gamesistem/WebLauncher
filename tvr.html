@@ -192,7 +192,7 @@
     </div>
 
     <div class="footer">
-        Dados obtidos de <a href="https://raw.githubusercontent.com/gamesistem/WebLauncher/main/t%C3%A1vola%20redonda.txt" target="_blank">gamesistem/WebLaunche/távola redonda.txt</a>
+        Dados obtidos de <a href="https://raw.githubusercontent.com/gamesistem/WebLauncher/main/t%C3%A1vola%20redonda.txt" target="_blank">gamesistem/WebLauncher/távola redonda.txt</a>
         &bull; Atualização automática a cada 10s
     </div>
 </div>
@@ -212,7 +212,10 @@
 
         // --- Função principal de parse e renderização ---
         function fetchAndRender() {
-            fetch(RAW_URL)
+            // Adiciona um "cache buster" (?t=timestamp) para ignorar o cache do GitHub e pegar as novas linhas na hora
+            const urlComCacheBuster = `${RAW_URL}?t=${new Date().getTime()}`;
+
+            fetch(urlComCacheBuster)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status} – ${response.statusText}`);
@@ -244,25 +247,20 @@
                 line = line.trim();
                 if (!line) continue; // ignora linhas vazias
 
-                // Procura padrão: [algum texto](algum texto)
-                const match = line.match(/^\[([^\]]*)\]\(([^)]*)\)$/);
+                // REGEX AJUSTADA: Aceita espaços extras que possam surgir ao digitar novas linhas no txt
+                const match = line.match(/^\s*\[([^\]]*)\]\s*\(([^)]*)\)\s*$/);
                 if (match) {
                     const cavaleiro = match[1].trim();
                     let nomeReal = match[2].trim();
 
-                    // Se nomeReal estiver vazio → não designado
-                    // Se for "???" → designado mas não está com o resto
-                    // Senão → designado normal
                     let status = 'assigned'; // padrão
                     if (nomeReal === '') {
                         status = 'empty';
                     } else if (nomeReal === '???') {
                         status = 'pending';
                     }
-                    // Para exibição, mantemos o nome real como está (vazio ou ???)
                     result.push({ cavaleiro, nomeReal, status });
                 }
-                // Ignora linhas que não casam com o padrão (pode ser cabeçalho ou comentário)
             }
 
             return result;
@@ -305,12 +303,12 @@
                     case 'pending':
                         statusText = 'Designado (não está com o resto)';
                         statusClass = 'status-pending';
-                        nomeExibido = '???'; // exibe ??? mesmo
+                        nomeExibido = '???';
                         break;
                     case 'empty':
                         statusText = 'Não designado';
                         statusClass = 'status-empty';
-                        nomeExibido = '—'; // traço para vazio
+                        nomeExibido = '—';
                         break;
                     default:
                         statusText = 'Desconhecido';
@@ -359,25 +357,20 @@
 
         // --- Inicia o auto-update e trata do botão ---
         function startAutoUpdate() {
-            // Carrega imediatamente
             fetchAndRender();
 
-            // Limpa intervalo anterior se existir
             if (autoUpdateInterval) {
                 clearInterval(autoUpdateInterval);
             }
             autoUpdateInterval = setInterval(fetchAndRender, UPDATE_INTERVAL_MS);
         }
 
-        // Evento do botão "Atualizar agora"
         refreshBtn.addEventListener('click', () => {
             fetchAndRender();
         });
 
-        // Iniciar
         startAutoUpdate();
 
-        // Opcional: parar o intervalo quando a página for descarregada (boa prática)
         window.addEventListener('beforeunload', () => {
             if (autoUpdateInterval) {
                 clearInterval(autoUpdateInterval);
