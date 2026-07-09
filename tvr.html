@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Távola Redonda – Cavaleiros em Tempo Real</title>
+
+    <meta property="og:title" content="⚔️ Távola Redonda – Cavaleiros em Tempo Real" />
+    
+    <meta property="og:description" content="Acompanhe o status dos Cavaleiros Principais e a Lista de Espera/Contribuintes atualizados em tempo real direto do repositório." />
+    
+    <meta property="og:image" content="https://raw.githubusercontent.com/gamesistem/WebLauncher/main/ico.png" />
+    
+    <meta name="theme-color" content="#6f5b8a" />
+    
+    <meta name="twitter:card" content="summary" />
+    <meta property="og:type" content="website" />
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/gamesistem/WebLauncher/main/ico.png" />
     
     <style>
@@ -91,7 +102,6 @@
             transform: scale(0.96);
         }
         
-        /* Estilos das Seções/Blocos Separados */
         .section-title {
             font-size: 1.3rem;
             color: #cbb7e6;
@@ -235,7 +245,6 @@
 
 <script>
     (function() {
-        // URLs raw dos arquivos no GitHub
         const PRINCIPAL_URL = 'https://raw.githubusercontent.com/gamesistem/WebLauncher/main/t%C3%A1vola%20redonda.txt';
         const EXTRA_URL = 'https://raw.githubusercontent.com/gamesistem/WebLauncher/main/extra.txt';
 
@@ -245,15 +254,13 @@
         const refreshBtn = document.getElementById('refreshBtn');
 
         let autoUpdateInterval = null;
-        const UPDATE_INTERVAL_MS = 10000; // 10 segundos
+        const UPDATE_INTERVAL_MS = 10000;
 
-        // --- Função principal que busca e divide em blocos separados ---
         function fetchAndRender() {
             const timestamp = new Date().getTime();
             const urlPrincipal = `${PRINCIPAL_URL}?t=${timestamp}`;
             const urlExtra = `${EXTRA_URL}?t=${timestamp}`;
 
-            // Busca os dois arquivos simultaneamente
             Promise.all([
                 fetch(urlPrincipal).then(res => res.ok ? res.text() : ""),
                 fetch(urlExtra).then(res => res.ok ? res.text() : "")
@@ -276,7 +283,6 @@
             });
         }
 
-        // --- Parser igual ao anterior ---
         function parseText(rawText, isExtraFile) {
             if (!rawText) return [];
             const lines = rawText.split(/\r?\n/);
@@ -306,7 +312,6 @@
             return result;
         }
 
-        // --- Cria a estrutura HTML de uma tabela específica ---
         function generateTableHtml(lista) {
             if (lista.length === 0) {
                 return `<div class="empty-notice">Nenhum cavaleiro registrado neste bloco.</div>`;
@@ -365,22 +370,19 @@
             return html;
         }
 
-        // --- Renderiza as tabelas divididas por blocos visuais ---
+        // Renderiza as tabelas divididas por blocos visuais
         function renderSplitTables(principais, extras) {
             let finalHtml = '';
 
-            // Bloco 1: Principais
             finalHtml += `<div class="section-title">⚔️ Cavaleiros Principais</div>`;
             finalHtml += generateTableHtml(principais);
 
-            // Bloco 2: Lista de Espera / Extras
             finalHtml += `<div class="section-title">📜 Lista de Espera & Contribuintes</div>`;
             finalHtml += generateTableHtml(extras);
 
             contentContainer.innerHTML = finalHtml;
         }
 
-        // --- Atualiza as informações de status ---
         function updateStatus(count, isError = false) {
             const now = new Date();
             const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
