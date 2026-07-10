@@ -5,7 +5,7 @@
 [Geraint]()
 [Gareth]("???")
 [Gaheris]()
-[Bedivere]("Aric")
+[Bedivere]()
 [Ector]()
 [Kay]()
 [Bors]()
